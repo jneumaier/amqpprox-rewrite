@@ -162,12 +162,17 @@ QueueRewriteError::QueueRewriteError(uint16_t replyCode, const std::string &text
 {
 }
 
+std::string_view normalizeVhost(std::string_view vhost)
+{
+    return vhost.empty() ? std::string_view("/") : vhost;
+}
+
 void RewriteConfig::validate() const
 {
     auto valid = [](const std::string &s) {
         return !s.empty() && s.size() <= 255 && s.find('\0') == std::string::npos;
     };
-    if (!valid(sourceVhost) || (!targetVhost.empty() && !valid(targetVhost)) ||
+    if (!valid(normalizeVhost(sourceVhost)) || (!targetVhost.empty() && !valid(targetVhost)) ||
         (quorumQueues && targetVhost.empty())) {
         throw std::invalid_argument(
             "Rewriting requires nonempty vhosts of at most 255 bytes; quorum "
@@ -182,7 +187,7 @@ void RewriteConfig::validate() const
 
 bool RewriteConfig::matches(const std::string &vhost) const
 {
-    return !targetVhost.empty() && vhost == sourceVhost;
+    return !targetVhost.empty() && normalizeVhost(vhost) == normalizeVhost(sourceVhost);
 }
 
 std::vector<uint8_t> rewriteQueueDeclare(const Frame &frame,
